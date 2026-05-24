@@ -33,6 +33,12 @@ export const api = {
   // Manual trigger
   runNow:      ()           => request('/alerts/run-now', { method: 'POST' }),
 
+  // Assets
+  getAssets:    ()           => request('/assets/'),
+  createAsset:  (body)       => request('/assets/', { method: 'POST', body: JSON.stringify(body) }),
+  updateAsset:  (id, body)   => request(`/assets/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteAsset:  (id)         => request(`/assets/${id}`, { method: 'DELETE' }),
+
   // Work Stock Plans — manual accounts
   getWorkAccounts:    ()           => request('/workstock/accounts'),
   createWorkAccount:  (body)       => request('/workstock/accounts', { method: 'POST', body: JSON.stringify(body) }),

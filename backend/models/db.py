@@ -112,6 +112,27 @@ class RetirementAccountUpdate(SQLModel):
     value: Optional[float] = None
 
 
+class Asset(SQLModel, table=True):
+    """A manually-tracked physical or financial asset (car, property, etc.)."""
+    id:         Optional[int] = Field(default=None, primary_key=True)
+    name:       str           = Field(default="")
+    value:      float         = Field(default=0.0)   # current market value
+    debt:       float         = Field(default=0.0)   # outstanding loan/balance
+    updated_at: datetime      = Field(default_factory=datetime.utcnow)
+
+
+class AssetCreate(SQLModel):
+    name:  str
+    value: float = 0.0
+    debt:  float = 0.0
+
+
+class AssetUpdate(SQLModel):
+    name:  Optional[str]   = None
+    value: Optional[float] = None
+    debt:  Optional[float] = None
+
+
 class WorkStockAccount(SQLModel, table=True):
     """Manually-tracked ESPP, RSU, or other equity plan."""
     id:         Optional[int] = Field(default=None, primary_key=True)
