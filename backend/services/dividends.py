@@ -60,6 +60,24 @@ DIVIDEND_UNIVERSE = [
 
     # Materials / Chemicals
     "DOW",  "LYB",
+
+    # Dividend & Income ETFs
+    "SCHD",  # Schwab US Dividend Equity
+    "VYM",   # Vanguard High Dividend Yield
+    "DVY",   # iShares Select Dividend (~5 %)
+    "HDV",   # iShares Core High Dividend
+    "DGRO",  # iShares Dividend Growth
+    "SPHD",  # Invesco S&P 500 High Div / Low Vol
+    "SPYD",  # SPDR S&P 500 High Dividend
+    "JEPI",  # JPMorgan Equity Premium Income (~7-9 %)
+    "JEPQ",  # JPMorgan Nasdaq Equity Premium Income
+    "DIVO",  # Amplify CWP Enhanced Dividend Income
+    "QYLD",  # Global X NASDAQ 100 Covered Call (~10 %+)
+    "XYLD",  # Global X S&P 500 Covered Call (~10 %+)
+    "RYLD",  # Global X Russell 2000 Covered Call
+    "PFF",   # iShares Preferred Stock & Income
+    "PGX",   # Invesco Preferred ETF
+    "PFFD",  # Global X U.S. Preferred ETF
 ]
 
 
