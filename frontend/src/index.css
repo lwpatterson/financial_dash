@@ -2,28 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Color tokens (dark = default) ──────────────────────────────── */
+:root {
+  --color-surface: 15 17 23;      /* #0f1117 */
+  --color-panel:   22 27 39;      /* #161b27 */
+  --color-border:  30 37 53;      /* #1e2535 */
+  --color-accent:  59 130 246;    /* #3b82f6 */
+  --color-muted:   100 116 139;   /* #64748b */
+
+  /* Semantic text tokens */
+  --text-base:    226 232 240;    /* slate-200 */
+  --text-sub:     148 163 184;    /* slate-400 */
+  --text-dim:     100 116 139;    /* slate-500 */
+
+  /* Subtle backgrounds used for hover / active states */
+  --subtle-bg:    255 255 255;    /* white — used as bg-white/5 etc. */
+}
+
+/* ── Light theme overrides ───────────────────────────────────────── */
+.light {
+  --color-surface: 241 245 249;   /* slate-100 */
+  --color-panel:   255 255 255;   /* white */
+  --color-border:  203 213 225;   /* slate-300 */
+  --color-accent:  37 99 235;     /* blue-700 */
+  --color-muted:   100 116 139;   /* slate-500 */
+
+  --text-base:     15 23 42;      /* slate-900 */
+  --text-sub:      51 65 85;      /* slate-700 */
+  --text-dim:      100 116 139;   /* slate-500 */
+
+  --subtle-bg:     0 0 0;         /* black — used as bg-black/5 etc. */
+}
+
+/* ── Base styles ─────────────────────────────────────────────────── */
 body {
-  background-color: #0f1117;
-  color: #e2e8f0;
+  background-color: rgb(var(--color-surface));
+  color: rgb(var(--text-base));
   font-family: 'DM Sans', sans-serif;
 }
 
 .mono { font-family: 'JetBrains Mono', monospace; }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0f1117; }
-::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 3px; }
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: rgb(var(--color-surface)); }
+::-webkit-scrollbar-thumb { background: rgb(var(--color-border)); border-radius: 3px; }
 
+/* ── Shared components ───────────────────────────────────────────── */
 .card {
-  background: #161b27;
-  border: 1px solid #1e2535;
+  background:    rgb(var(--color-panel));
+  border:        1px solid rgb(var(--color-border));
   border-radius: 12px;
-  padding: 1.25rem;
+  padding:       1.25rem;
 }
 
-.badge-green { background: rgba(34,197,94,0.12); color: #22c55e; }
-.badge-red   { background: rgba(239,68,68,0.12);  color: #ef4444; }
-.badge-blue  { background: rgba(59,130,246,0.12); color: #93c5fd; }
+.badge-green { background: rgba(34,197,94,0.12);   color: #22c55e; }
+.badge-red   { background: rgba(239,68,68,0.12);   color: #ef4444; }
+.badge-blue  { background: rgba(59,130,246,0.12);  color: #93c5fd; }
 .badge-muted { background: rgba(100,116,139,0.12); color: #94a3b8; }
 
 @keyframes slide-in {
@@ -31,3 +66,26 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-in { animation: slide-in 0.2s ease-out both; }
+
+/* ── Light-mode overrides for commonly-used Tailwind utilities ───── *
+ * These cover structural text/background classes used app-wide       *
+ * without needing a dark: prefix on every element.                   */
+
+/* Primary / secondary text */
+.light .text-slate-100,
+.light .text-slate-200 { color: rgb(15 23 42); }        /* → slate-900 */
+.light .text-slate-300 { color: rgb(51 65 85); }        /* → slate-700 */
+.light .text-slate-400 { color: rgb(71 85 105); }       /* → slate-600 */
+
+/* Hover text */
+.light .hover\:text-slate-200:hover { color: rgb(15 23 42); }
+
+/* Subtle hover / active backgrounds */
+.light .bg-white\/5,
+.light .bg-white\/\[0\.025\],
+.light .bg-white\/\[0\.01\]  { background-color: rgba(0,0,0,0.04); }
+.light .hover\:bg-white\/5:hover,
+.light .hover\:bg-white\/\[0\.025\]:hover { background-color: rgba(0,0,0,0.04); }
+
+/* Subtle borders */
+.light .border-white\/5 { border-color: rgba(0,0,0,0.08); }

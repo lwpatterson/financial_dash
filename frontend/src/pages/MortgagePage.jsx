@@ -112,7 +112,7 @@ const INPUT = 'w-full bg-surface border border-border rounded-md px-3 py-2 text-
 
 /* ── Page ────────────────────────────────────────────────────────── */
 export default function MortgagePage() {
-  const [form, setForm] = useState({ startDate: '', years: '30', rate: '', principal: '' })
+  const [form, setForm] = useState({ startDate: '', years: '30', rate: '', principal: '', targetYear: '' })
   const [calculated,  setCalculated]  = useState(false)
   const [extras,      setExtras]      = useState({})        // { [monthIdx]: number }
   const [extraInputs, setExtraInputs] = useState({})        // { [monthIdx]: string }
@@ -164,6 +164,33 @@ export default function MortgagePage() {
     [mortgage, extras]
   )
 
+  /* Target payoff year → extra monthly payment needed */
+  const targetPayoffCalc = useMemo(() => {
+    if (!mortgage || !stdSched || !form.targetYear) return null
+    const targetY = parseInt(form.targetYear)
+    if (!targetY) return null
+
+    // Months from loan start through December of targetYear
+    const targetMonths = (targetY - mortgage.startYear) * 12 + (12 - mortgage.startMonth0)
+    if (targetMonths <= 0) return { status: 'past' }
+
+    const naturalMonths = mortgage.years * 12
+    if (targetMonths >= naturalMonths) return { status: 'unnecessary', targetY }
+
+    const { principal, rate, startMonth0 } = mortgage
+    const monthlyRate   = rate / 100 / 12
+    const reqPayment    = calcPayment(principal, monthlyRate, targetMonths)
+    const extraNeeded   = Math.max(0, reqPayment - stdSched.payment)
+
+    return {
+      status:      'needed',
+      targetY,
+      targetMonths,
+      reqPayment:  r2(reqPayment),
+      extraNeeded: Math.ceil(extraNeeded),   // round up so payoff lands on or before target
+    }
+  }, [mortgage, stdSched, form.targetYear])
+
   /* Chart: one point per year (year-end balance) */
   const chartData = useMemo(() => {
     if (!stdSched || !mortgage) return []
@@ -196,7 +223,7 @@ export default function MortgagePage() {
     // Cancel any in-flight debounce timers
     Object.values(debounceRef.current).forEach(clearTimeout)
     debounceRef.current = {}
-    setForm({ startDate: '', years: '30', rate: '', principal: '' })
+    setForm({ startDate: '', years: '30', rate: '', principal: '', targetYear: '' })
     setCalculated(false)
     setExtras({})
     setExtraInputs({})
@@ -220,6 +247,20 @@ export default function MortgagePage() {
       })
     }, 400)
   }, [])
+
+  const applyTargetExtra = useCallback(() => {
+    if (!targetPayoffCalc || targetPayoffCalc.status !== 'needed' || !stdSched) return
+    const { extraNeeded } = targetPayoffCalc
+    const newExtras = {}
+    const newInputs = {}
+    stdSched.months.forEach((_, i) => {
+      newExtras[String(i)] = extraNeeded
+      newInputs[String(i)] = String(extraNeeded)
+    })
+    setExtras(newExtras)
+    setExtraInputs(newInputs)
+    localStorage.setItem('mortgage_extras', JSON.stringify(newExtras))
+  }, [targetPayoffCalc, stdSched])
 
   const toggleYear = useCallback((year) => {
     setExpanded(prev => {
@@ -256,7 +297,7 @@ export default function MortgagePage() {
       {/* ── Mortgage inputs ────────────────────────────────────── */}
       <div className="card space-y-4">
         <p className="text-sm font-medium text-slate-200">Mortgage Details</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
           <div className="space-y-1.5">
             <label className="text-xs text-muted">Original Start Date</label>
@@ -309,7 +350,55 @@ export default function MortgagePage() {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted">Target Payoff Year</label>
+            <input
+              type="number" min="2024" max="2100" step="1"
+              placeholder={mortgage ? String(mortgage.startYear + mortgage.years) : 'e.g. 2035'}
+              value={form.targetYear}
+              onChange={e => setForm(f => ({ ...f, targetYear: e.target.value }))}
+              className={INPUT}
+            />
+          </div>
+
         </div>
+
+        {/* Target payoff result */}
+        {targetPayoffCalc && (() => {
+          const { status, targetY, extraNeeded, reqPayment } = targetPayoffCalc
+          if (status === 'past') return (
+            <p className="text-xs text-red-400/80 flex items-center gap-1.5">
+              ⚠ Target year is before the loan start date.
+            </p>
+          )
+          if (status === 'unnecessary') return (
+            <p className="text-xs text-green-400/80 flex items-center gap-1.5">
+              ✓ Your loan already pays off before {targetY} — no extra payment needed.
+            </p>
+          )
+          return (
+            <div className="flex items-center gap-4 px-4 py-3 rounded-lg bg-accent/[0.07] border border-accent/20">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-200">
+                  Pay off by <span className="text-accent">{targetY}</span>
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  Requires <span className="text-slate-200 font-semibold mono">{usd(reqPayment, 2)}/mo</span>
+                  {' '}— that's an extra{' '}
+                  <span className="text-green-400 font-semibold mono">{usd(extraNeeded, 0)}/mo</span>
+                  {' '}on top of your standard payment.
+                </p>
+              </div>
+              <button
+                onClick={applyTargetExtra}
+                className="shrink-0 bg-accent/15 text-accent border border-accent/30 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-accent/25 transition-colors whitespace-nowrap"
+              >
+                Apply to schedule
+              </button>
+            </div>
+          )
+        })()}
+
         <div className="flex items-center gap-3">
           <button
             onClick={handleCalc}

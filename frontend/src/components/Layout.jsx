@@ -1,10 +1,18 @@
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
-import { BarChart2, Bell, Landmark, Home, Stethoscope, PiggyBank, Briefcase, Layers, LayoutDashboard, Scale } from 'lucide-react'
+import { BarChart2, Bell, Landmark, Home, Stethoscope, PiggyBank, Briefcase, Layers, LayoutDashboard, Scale, Sun, Moon } from 'lucide-react'
 import { useAlertNotifications } from '../hooks/useAlertNotifications'
 import ToastContainer from './ToastContainer'
 
 export default function Layout() {
   const { toasts, dismiss } = useAlertNotifications()
+
+  const [light, setLight] = useState(() => localStorage.getItem('theme') === 'light')
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', light)
+    localStorage.setItem('theme', light ? 'light' : 'dark')
+  }, [light])
 
   const nav = (to, Icon, label) => (
     <NavLink
@@ -57,6 +65,17 @@ export default function Layout() {
           {nav('/mortgage',  Home,  'Mortgage')}
           {nav('/strategy',  Scale, 'Payoff vs. Invest')}
         </nav>
+
+        {/* ── Theme toggle ──────────────────────────────────────── */}
+        <div className="p-2 border-t border-border shrink-0">
+          <button
+            onClick={() => setLight(l => !l)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted hover:text-slate-200 hover:bg-white/5 transition-colors"
+          >
+            {light ? <Moon size={16} className="shrink-0" /> : <Sun size={16} className="shrink-0" />}
+            <span>{light ? 'Dark mode' : 'Light mode'}</span>
+          </button>
+        </div>
 
       </aside>
 

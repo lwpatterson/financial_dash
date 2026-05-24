@@ -4,13 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        surface: '#0f1117',
-        panel:   '#161b27',
-        border:  '#1e2535',
-        accent:  '#3b82f6',
+        // CSS-variable-backed so light/dark themes just swap the vars
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        panel:   'rgb(var(--color-panel)   / <alpha-value>)',
+        border:  'rgb(var(--color-border)  / <alpha-value>)',
+        accent:  'rgb(var(--color-accent)  / <alpha-value>)',
+        muted:   'rgb(var(--color-muted)   / <alpha-value>)',
         green:   '#22c55e',
         red:     '#ef4444',
-        muted:   '#64748b',
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'monospace'],
