@@ -25,6 +25,7 @@ const DEFAULT_INDICATORS = [
   'bb_upper','bb_mid','bb_lower',
   'mmbm_sweep','mmbm_mss','mmbm_signal',
   'mmsm_sweep','mmsm_mss','mmsm_signal',
+  'sks_ratio','sks_signal',
 ]
 
 function Select({ value, onChange, options, className = '' }) {
@@ -47,10 +48,9 @@ function Select({ value, onChange, options, className = '' }) {
 }
 
 function ConditionRow({ condition, onChange, onDelete, indicatorMeta }) {
-  const indLabels = Object.entries(indicatorMeta || {}).map(([k, v]) => ({
-    value: k,
-    label: v.label || k,
-  }))
+  const indLabels = Object.entries(indicatorMeta || {})
+    .filter(([, v]) => v !== null && typeof v === 'object')
+    .map(([k, v]) => ({ value: k, label: v.label || k }))
   // Fall back to defaults if meta not loaded
   const indOptions = indLabels.length > 0
     ? indLabels

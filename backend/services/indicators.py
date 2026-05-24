@@ -6,8 +6,29 @@ including MMBM / MMSM pattern detection.
 import yfinance as yf
 import pandas_ta as ta
 import json
+import pytz
 from datetime import datetime, timedelta
 from typing import Optional
+
+# Total regular-session minutes (9:30–16:00 ET)
+_MARKET_MINUTES = 390
+_ET = pytz.timezone("America/New_York")
+
+
+def _market_day_fraction() -> float:
+    """
+    Fraction of today's regular session that has elapsed (0.0–1.0).
+    Returns 1.0 outside market hours so projected volume == raw volume.
+    """
+    now = datetime.now(_ET)
+    market_open  = now.replace(hour=9,  minute=30, second=0, microsecond=0)
+    market_close = now.replace(hour=16, minute=0,  second=0, microsecond=0)
+    if now <= market_open:
+        return 1.0   # pre-market — treat as full day to avoid inflated projections
+    if now >= market_close:
+        return 1.0   # after close — day is complete
+    elapsed = (now - market_open).total_seconds() / 60
+    return max(elapsed / _MARKET_MINUTES, 0.01)  # floor at 1% to avoid division by zero
 
 
 INDICATOR_META = {
@@ -37,6 +58,9 @@ INDICATOR_META = {
     "mmsm_sweep":     {"label": "MMSM: Buy-Side Sweep",     "unit": ""},
     "mmsm_mss":       {"label": "MMSM: Bearish MSS",        "unit": ""},
     "mmsm_signal":    {"label": "MMSM: Full Signal",        "unit": ""},
+    # Someone Knows Something — projected full-day volume vs 20d average
+    "sks_ratio":      {"label": "SKS: Volume Ratio (proj)", "unit": "x"},
+    "sks_signal":     {"label": "SKS: Someone Knows Something (>1.3×)", "unit": ""},
 }
 
 
@@ -96,6 +120,35 @@ def detect_mmsm(close, low, high) -> dict:
     return {"mmsm_sweep": sweep, "mmsm_mss": mss, "mmsm_signal": signal}
 
 
+def detect_sks(volume, threshold: float = 1.3) -> dict:
+    """
+    Someone Knows Something — unusual volume detector.
+
+    Projects today's partial volume to a full-day estimate based on how
+    far through the session we are, then compares to the 20-day average.
+    A ratio above `threshold` (default 1.3 = 30% above normal) fires the signal.
+
+    Uses the prior 20 completed days (excluding today) for the baseline so
+    today's partial candle doesn't skew the average.
+    """
+    if len(volume) < 22:
+        return {"sks_ratio": None, "sks_signal": 0}
+
+    avg_volume = float(volume.iloc[-21:-1].mean())   # 20 completed days, not today
+    if avg_volume <= 0:
+        return {"sks_ratio": None, "sks_signal": 0}
+
+    today_volume    = float(volume.iloc[-1])
+    day_fraction    = _market_day_fraction()
+    projected       = today_volume / day_fraction    # extrapolate to full day
+    ratio           = round(projected / avg_volume, 3)
+
+    return {
+        "sks_ratio":  ratio,
+        "sks_signal": 1 if ratio >= threshold else 0,
+    }
+
+
 def fetch_indicators(symbol: str) -> Optional[dict]:
     """Download data and compute all indicators. Returns dict or None on failure."""
     try:
@@ -149,6 +202,7 @@ def fetch_indicators(symbol: str) -> Optional[dict]:
         # Append pattern detection
         indicators.update(detect_mmbm(close, low, high))
         indicators.update(detect_mmsm(close, low, high))
+        indicators.update(detect_sks(volume))
 
         # Historical close for charting (last 90 days)
         hist = []

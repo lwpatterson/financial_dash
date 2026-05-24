@@ -95,6 +95,7 @@ function TickerRow({ ticker, onRemove, onRefresh }) {
         <Stat label="RSI"    value={ind.rsi        != null ? ind.rsi.toFixed(1)        : null} />
         <Stat label="MACD"   value={ind.macd       != null ? ind.macd.toFixed(3)       : null} />
         <Stat label="Vol×"   value={ind.volume_ratio != null ? `${ind.volume_ratio}x`  : null} />
+        <Stat label="SKS"    value={ind.sks_ratio  != null ? `${ind.sks_ratio}x`       : null} />
         <Stat label="SMA 50" value={ind.sma_50     != null ? `$${ind.sma_50.toFixed(0)}` : null} />
         <Stat label="SMA200" value={ind.sma_200    != null ? `$${ind.sma_200.toFixed(0)}` : null} />
         <Stat label="BB↑"    value={ind.bb_upper   != null ? `$${ind.bb_upper.toFixed(0)}` : null} />
@@ -103,6 +104,7 @@ function TickerRow({ ticker, onRemove, onRefresh }) {
 
       {/* Pattern pills */}
       <div className="flex items-center gap-1 shrink-0">
+        <PatternPill label="SKS"         active={ind.sks_signal}  />
         <PatternPill label="MMBM sweep"  active={ind.mmbm_sweep}  />
         <PatternPill label="MMBM sig"    active={ind.mmbm_signal} />
         <PatternPill label="MMSM sweep"  active={ind.mmsm_sweep}  />

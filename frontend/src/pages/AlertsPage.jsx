@@ -213,10 +213,10 @@ export default function AlertsPage() {
   const [running, setRunning] = useState(false)
 
   const load = useCallback(async () => {
-    const [r, t, m] = await Promise.all([api.getRules(), api.getTickers(), api.getIndicatorMeta()])
-    setRules(r)
-    setTickers(t)
-    setMeta(m)
+    const [r, t, m] = await Promise.allSettled([api.getRules(), api.getTickers(), api.getIndicatorMeta()])
+    if (r.status === 'fulfilled') setRules(r.value)
+    if (t.status === 'fulfilled') setTickers(t.value)
+    if (m.status === 'fulfilled') setMeta(m.value)
   }, [])
 
   useEffect(() => { load() }, [load])

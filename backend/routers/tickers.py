@@ -78,6 +78,12 @@ def remove_ticker(symbol: str, session: Session = Depends(get_session)):
     return {"ok": True}
 
 
+@router.get("/meta/indicators")
+def indicator_meta():
+    """Returns the indicator metadata for the rule builder UI."""
+    return INDICATOR_META
+
+
 @router.get("/{symbol}/indicators")
 def get_indicators(symbol: str, session: Session = Depends(get_session)):
     """Fetch fresh indicators for a ticker (triggers yfinance download)."""
@@ -101,9 +107,3 @@ def get_indicators(symbol: str, session: Session = Depends(get_session)):
     session.commit()
 
     return data
-
-
-@router.get("/meta/indicators")
-def indicator_meta():
-    """Returns the indicator metadata for the rule builder UI."""
-    return INDICATOR_META
