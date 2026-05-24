@@ -67,4 +67,9 @@ export const api = {
     method: 'PATCH',
     body: JSON.stringify({ shares_owned: shares }),
   }),
+  addDividendTicker:     (symbol)         => request('/dividends/tickers', {
+    method: 'POST',
+    body: JSON.stringify({ symbol }),
+  }),
+  removeDividendTicker:  (symbol)         => request(`/dividends/tickers/${symbol}`, { method: 'DELETE' }),
 }

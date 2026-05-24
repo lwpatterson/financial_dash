@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '../api'
-import { RefreshCw, Landmark } from 'lucide-react'
+import { RefreshCw, Landmark, Plus, X, LoaderCircle } from 'lucide-react'
 
-const TARGET          = 100_000   // single goal: $100K/yr
+const TARGET          = 100_000
 const MIN_YIELD       = 0.05
 const MILESTONES      = [25_000, 50_000, 75_000, 100_000]
 const MILESTONE_LABELS = ['$25K', '$50K', '$75K', '$100K']
 
 function usd(n, dec = 0) {
-  return n.toLocaleString('en-US', {
+  return (n ?? 0).toLocaleString('en-US', {
     style: 'currency', currency: 'USD',
     minimumFractionDigits: dec, maximumFractionDigits: dec,
   })
@@ -34,20 +34,19 @@ function timeAgo(iso) {
 function buildPlan(stocks, targetIncome) {
   const n = stocks.length
   if (n === 0) return { rows: [], totalNeeded: 0, totalIncome: 0, avgYield: 0, perStock: 0 }
-
   const avgYield = stocks.reduce((s, t) => s + t.dividend_yield, 0) / n
   const perStock = (targetIncome / avgYield) / n
-
   const rows = stocks.map(s => {
-    const targetShares = Math.ceil(perStock / s.price)
+    const price    = s.price ?? 0
+    const annDiv   = s.annual_dividend ?? 0
+    const targetShares = price > 0 ? Math.ceil(perStock / price) : 0
     return {
       ...s,
       targetShares,
-      targetInvest: targetShares * s.price,
-      targetIncome: targetShares * s.annual_dividend,
+      targetInvest: targetShares * price,
+      targetIncome: targetShares * annDiv,
     }
   }).sort((a, b) => b.targetIncome - a.targetIncome)
-
   return {
     rows,
     totalNeeded: rows.reduce((s, r) => s + r.targetInvest, 0),
@@ -57,7 +56,6 @@ function buildPlan(stocks, targetIncome) {
   }
 }
 
-// Gradient: red (0) → orange ($25K) → yellow ($50K) → green ($100K)
 const BAR_GRADIENT = 'linear-gradient(to right, #ef4444 0%, #f97316 25%, #eab308 50%, #22c55e 100%)'
 
 function progressColor(pct) {
@@ -67,95 +65,129 @@ function progressColor(pct) {
   return '#22c55e'
 }
 
-// Minor ticks every $10K + the $25K and $75K milestone ticks; labels at all 5 milestones
 const TICKS = [0, 10_000, 20_000, 25_000, 30_000, 40_000, 50_000, 60_000, 70_000, 75_000, 80_000, 90_000, 100_000]
 const TICK_LABELS = { 0: '$0', 25_000: '$25K', 50_000: '$50K', 75_000: '$75K', 100_000: '$100K' }
 
 function IncomeProgressBar({ current, target }) {
   const pct   = Math.min(100, Math.max(0, (current / target) * 100))
   const color = progressColor(pct)
-
   return (
     <div className="card space-y-3">
-      {/* Label row */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted uppercase tracking-widest font-medium">
-          Income Goal Progress
-        </span>
-        <span className="mono text-sm font-bold" style={{ color }}>
-          {usd(current)} / yr
-        </span>
+        <span className="text-xs text-muted uppercase tracking-widest font-medium">Income Goal Progress</span>
+        <span className="mono text-sm font-bold" style={{ color }}>{usd(current)} / yr</span>
       </div>
-
-      {/* Bar track */}
       <div className="relative h-5 rounded-full overflow-hidden bg-surface border border-border/50">
-        {/* Dim full-width gradient so empty track is visible */}
-        <div className="absolute inset-0 opacity-[0.12] rounded-full"
-             style={{ background: BAR_GRADIENT }} />
-        {/* Filled portion */}
+        <div className="absolute inset-0 opacity-[0.12] rounded-full" style={{ background: BAR_GRADIENT }} />
         {pct > 0 && (
-          <div
-            className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-            style={{ width: `${pct}%`, background: BAR_GRADIENT }}
-          />
+          <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+               style={{ width: `${pct}%`, background: BAR_GRADIENT }} />
         )}
-        {/* Subtle inner shine */}
         {pct > 0 && (
           <div className="absolute inset-y-0 left-0 rounded-full pointer-events-none"
-               style={{
-                 width: `${pct}%`,
-                 background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 60%)',
-               }}
-          />
+               style={{ width: `${pct}%`, background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
         )}
       </div>
-
-      {/* Tick marks + milestone labels */}
       <div className="relative" style={{ height: '24px' }}>
         {TICKS.map(t => {
-          const x     = (t / target) * 100
+          const x = (t / target) * 100
           const label = TICK_LABELS[t]
           const isMilestone = label !== undefined
           const isFirst = t === 0
           const isLast  = t === target
-
           return (
-            <div
-              key={t}
-              className="absolute top-0 flex flex-col items-center"
+            <div key={t} className="absolute top-0 flex flex-col items-center"
               style={{
                 left:      isLast  ? undefined : isFirst ? 0      : `${x}%`,
                 right:     isLast  ? 0         : undefined,
                 transform: (!isFirst && !isLast) ? 'translateX(-50%)' : undefined,
-              }}
-            >
+              }}>
               <div className={`w-px ${isMilestone ? 'h-2 bg-border' : 'h-1.5 bg-border/40'}`} />
-              {label && (
-                <span className={`text-[9px] mt-0.5 whitespace-nowrap ${
-                  isMilestone ? 'text-muted' : 'text-border'
-                }`}>
-                  {label}
-                </span>
-              )}
+              {label && <span className={`text-[9px] mt-0.5 whitespace-nowrap ${isMilestone ? 'text-muted' : 'text-border'}`}>{label}</span>}
             </div>
           )
         })}
       </div>
-
-      {/* Status line */}
       <p className="text-[11px] text-muted -mt-1">
         {pct >= 100
           ? <span className="text-green-400 font-semibold">🎉 $100K/yr goal reached!</span>
-          : <>
-              <span className="text-slate-300 font-medium">{usd(TARGET - current)}</span>
-              {' '}remaining · {pct.toFixed(1)}% complete
-            </>
+          : <><span className="text-slate-300 font-medium">{usd(TARGET - current)}</span>{' '}remaining · {pct.toFixed(1)}% complete</>
         }
       </p>
     </div>
   )
 }
 
+/* ── Add Ticker Card ─────────────────────────────────────────────── */
+function AddTickerCard({ onAdd }) {
+  const [symbol,  setSymbol]  = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+  const inputRef = useRef(null)
+
+  const submit = async () => {
+    const sym = symbol.trim().toUpperCase()
+    if (!sym) return
+    setLoading(true)
+    setError('')
+    try {
+      const result = await onAdd(sym)
+      if (result) {
+        setSymbol('')
+        inputRef.current?.focus()
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const kd = (e) => {
+    if (e.key === 'Enter') submit()
+    if (e.key === 'Escape') { setSymbol(''); setError('') }
+  }
+
+  return (
+    <div className="card border-dashed border-border/60 space-y-2">
+      <p className="text-xs font-medium text-slate-300">Add a ticker to track</p>
+      <p className="text-[10px] text-muted">
+        Enter any stock or ETF symbol. Live dividend data will be fetched from Yahoo Finance
+        and the ticker will persist across portfolio refreshes.
+      </p>
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={symbol}
+          onChange={e => { setSymbol(e.target.value.toUpperCase()); setError('') }}
+          onKeyDown={kd}
+          placeholder="e.g. AAPL, JEPI, O"
+          maxLength={10}
+          className="flex-1 bg-surface border border-border rounded-md px-3 py-1.5 text-sm mono uppercase focus:outline-none focus:border-accent transition-colors placeholder:normal-case placeholder:text-muted"
+          disabled={loading}
+        />
+        <button
+          onClick={submit}
+          disabled={loading || !symbol.trim()}
+          className="flex items-center gap-1.5 bg-accent/15 text-accent border border-accent/30 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-accent/25 transition-colors disabled:opacity-40"
+        >
+          {loading
+            ? <><LoaderCircle size={12} className="animate-spin" /> Fetching…</>
+            : <><Plus size={12} /> Add</>
+          }
+        </button>
+      </div>
+      {error && (
+        <p className="text-[11px] text-red-400 flex items-start gap-1">
+          <span className="shrink-0">⚠</span> {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/* ── Page ────────────────────────────────────────────────────────── */
 export default function DividendPage() {
   const [data,        setData]        = useState(null)
   const [loading,     setLoading]     = useState(true)
@@ -191,6 +223,31 @@ export default function DividendPage() {
     finally   { setRefreshing(false) }
   }
 
+  const handleAddTicker = useCallback(async (symbol) => {
+    const result = await api.addDividendTicker(symbol)
+    // Re-fetch from server to guarantee consistent state (avoids render crash
+    // from manually patching state with a partially-shaped object)
+    const [freshData, freshHoldings] = await Promise.allSettled([
+      api.getDividends(),
+      api.getDividendHoldings(),
+    ])
+    if (freshData.status     === 'fulfilled') setData(freshData.value)
+    if (freshHoldings.status === 'fulfilled') setSavedOwned(freshHoldings.value)
+    return result
+  }, [setSavedOwned])
+
+  const handleRemoveTicker = useCallback(async (symbol) => {
+    await api.removeDividendTicker(symbol)
+    setData(prev => {
+      if (!prev) return prev
+      const stocks = prev.stocks.filter(s => s.symbol !== symbol)
+      return { ...prev, stocks, count: stocks.length }
+    })
+    // Also clear shares owned for the removed ticker
+    setOwnedInputs(prev => { const next = { ...prev }; delete next[symbol]; return next })
+    setSavedOwned(prev  => { const next = { ...prev }; delete next[symbol]; return next })
+  }, [])
+
   const handleOwned = useCallback((symbol, raw) => {
     setOwnedInputs(prev => ({ ...prev, [symbol]: raw }))
     clearTimeout(debounceRef.current[symbol])
@@ -207,17 +264,24 @@ export default function DividendPage() {
     return savedOwned[symbol] || 0
   }, [ownedInputs, savedOwned])
 
-  const qualified  = (data?.stocks ?? []).filter(s => s.dividend_yield >= MIN_YIELD)
-  const plan       = buildPlan(qualified, TARGET)
+  // Separate user-added from screened stocks
+  const allStocks  = data?.stocks ?? []
+  const userAdded  = allStocks.filter(s => s.user_added)
+  const screened   = allStocks.filter(s => !s.user_added)
+  const qualified  = screened.filter(s => s.dividend_yield >= MIN_YIELD)
+
+  const plan = buildPlan(qualified, TARGET)
   const lastUpdated = timeAgo(data?.last_updated)
 
-  const totalActuallyInvested = qualified.reduce(
-    (sum, s) => sum + getOwned(s.symbol) * s.price, 0
+  const totalActuallyInvested = allStocks.reduce(
+    (sum, s) => sum + getOwned(s.symbol) * (s.price ?? 0), 0
   )
-  const totalProjectedIncome = qualified.reduce(
-    (sum, s) => sum + getOwned(s.symbol) * s.annual_dividend, 0
+  const totalProjectedIncome = allStocks.reduce(
+    (sum, s) => sum + getOwned(s.symbol) * (s.annual_dividend ?? 0), 0
   )
   const toGo = Math.max(0, plan.totalNeeded - totalActuallyInvested)
+
+  const hasContent = !loading && !refreshing && (qualified.length > 0 || userAdded.length > 0)
 
   return (
     <div className="space-y-5">
@@ -245,9 +309,12 @@ export default function DividendPage() {
       </div>
 
       {error && (
-        <div className="text-red-400 text-sm px-3 py-2 rounded-lg border border-red-400/20 bg-red-400/5">
-          {error}
-        </div>
+        <div className="text-red-400 text-sm px-3 py-2 rounded-lg border border-red-400/20 bg-red-400/5">{error}</div>
+      )}
+
+      {/* ── Add Ticker card (always visible) ─────────────────────── */}
+      {!loading && !refreshing && (
+        <AddTickerCard onAdd={handleAddTicker} />
       )}
 
       {/* ── Loading / refreshing ─────────────────────────────────── */}
@@ -262,31 +329,27 @@ export default function DividendPage() {
       )}
 
       {/* ── Empty state ──────────────────────────────────────────── */}
-      {!loading && !refreshing && qualified.length === 0 && (
+      {!loading && !refreshing && qualified.length === 0 && userAdded.length === 0 && (
         <div className="card text-center py-16 text-muted space-y-2">
           <Landmark size={32} className="mx-auto opacity-30" />
           <p className="font-medium text-slate-300">No data yet</p>
           <p className="text-xs max-w-sm mx-auto">
             Click <strong className="text-slate-200">Load Data</strong> to screen
-            dividend-paying stocks and ETFs and build your income plan.
+            dividend-paying stocks and ETFs, or add your own tickers above.
           </p>
         </div>
       )}
 
       {/* ── Main planner ─────────────────────────────────────────── */}
-      {!loading && !refreshing && qualified.length > 0 && (
+      {hasContent && (
         <>
-          {/* 1. Gradient progress bar */}
+          {/* 1. Progress bar */}
           <IncomeProgressBar current={totalProjectedIncome} target={TARGET} />
 
-          {/* 2. Two info cards */}
+          {/* 2. Info cards */}
           <div className="grid grid-cols-2 gap-3">
-
-            {/* Left: $100K portfolio stats */}
             <div className="card border-green-500/20 bg-green-500/[0.04] space-y-3">
-              <p className="text-[10px] text-muted uppercase tracking-widest">
-                $100K / yr Portfolio
-              </p>
+              <p className="text-[10px] text-muted uppercase tracking-widest">$100K / yr Portfolio</p>
               <div className="flex flex-wrap gap-x-6 gap-y-3">
                 <Stat label="Total needed" value={usd(plan.totalNeeded)} />
                 <Stat label="Avg yield"    value={`${(plan.avgYield * 100).toFixed(2)}%`} />
@@ -294,68 +357,41 @@ export default function DividendPage() {
                 <Stat label="Per stock"    value={usd(plan.perStock)} />
               </div>
               <div className="border-t border-border/40 pt-2.5 flex gap-6">
-                <Stat
-                  label="Invested so far"
-                  value={usd(totalActuallyInvested)}
-                  valueClass="text-green-400"
-                />
-                <Stat
-                  label="To go"
-                  value={toGo === 0 ? '✓ done!' : usd(toGo)}
-                  valueClass={toGo === 0 ? 'text-green-400' : 'text-yellow-400'}
-                />
+                <Stat label="Invested so far" value={usd(totalActuallyInvested)} valueClass="text-green-400" />
+                <Stat label="To go" value={toGo === 0 ? '✓ done!' : usd(toGo)}
+                  valueClass={toGo === 0 ? 'text-green-400' : 'text-yellow-400'} />
               </div>
             </div>
-
-            {/* Right: current projected annual income */}
             <div className="card border-green-500/20 bg-green-500/[0.04] flex flex-col justify-center gap-1">
-              <p className="text-[10px] text-muted uppercase tracking-widest">
-                Current Projected Income
-              </p>
-              <p className="text-5xl font-bold mono text-green-400 leading-none">
-                {usd(totalProjectedIncome)}
-              </p>
+              <p className="text-[10px] text-muted uppercase tracking-widest">Current Projected Income</p>
+              <p className="text-5xl font-bold mono text-green-400 leading-none">{usd(totalProjectedIncome)}</p>
               <p className="text-sm text-muted">per year</p>
               {totalProjectedIncome > 0 && (
                 <p className="text-xs text-muted mt-1">
-                  ≈{' '}
-                  <strong className="text-slate-300">{usd(totalProjectedIncome / 12)}</strong>
-                  {' '}/ mo &nbsp;·&nbsp;{' '}
-                  <strong className="text-slate-300">
-                    {((totalProjectedIncome / TARGET) * 100).toFixed(1)}%
-                  </strong>{' '}
-                  of goal
+                  ≈ <strong className="text-slate-300">{usd(totalProjectedIncome / 12)}</strong> / mo &nbsp;·&nbsp;{' '}
+                  <strong className="text-slate-300">{((totalProjectedIncome / TARGET) * 100).toFixed(1)}%</strong> of goal
                 </p>
               )}
             </div>
           </div>
 
-          {/* 3. Milestone progress strip */}
+          {/* 3. Milestone strip */}
           <div className="grid grid-cols-4 gap-2">
             {MILESTONES.map((m, i) => {
-              const p    = buildPlan(qualified, m)
+              const p     = buildPlan(qualified, m)
               const toGoM = Math.max(0, p.totalNeeded - totalActuallyInvested)
               const done  = toGoM === 0
               return (
-                <div key={m}
-                  className={`card p-3 border ${
-                    done
-                      ? 'border-green-500/50 bg-green-500/[0.07]'
-                      : 'border-border'
-                  }`}
-                >
+                <div key={m} className={`card p-3 border ${done ? 'border-green-500/50 bg-green-500/[0.07]' : 'border-border'}`}>
                   <p className={`text-xs font-semibold mb-1 ${done ? 'text-green-400' : 'text-muted'}`}>
-                    {MILESTONE_LABELS[i]}/yr
-                    {done && <span className="ml-1">✓</span>}
+                    {MILESTONE_LABELS[i]}/yr {done && <span className="ml-1">✓</span>}
                   </p>
                   <p className="mono text-sm font-bold text-slate-200">{usd(p.totalNeeded)}</p>
                   <p className="text-[10px] text-muted mb-2">total needed</p>
                   <div className="border-t border-border/50 pt-2 space-y-1">
                     <div className="flex items-baseline justify-between gap-1">
                       <span className="text-[10px] text-muted">invested</span>
-                      <span className="mono text-[11px] text-green-400 font-medium">
-                        {usd(totalActuallyInvested)}
-                      </span>
+                      <span className="mono text-[11px] text-green-400 font-medium">{usd(totalActuallyInvested)}</span>
                     </div>
                     <div className="flex items-baseline justify-between gap-1">
                       <span className="text-[10px] text-muted">to go</span>
@@ -369,7 +405,7 @@ export default function DividendPage() {
             })}
           </div>
 
-          {/* 4. Allocation table */}
+          {/* 4. Table */}
           <div className="card p-0 overflow-x-auto">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <span className="text-sm font-medium">
@@ -377,9 +413,10 @@ export default function DividendPage() {
                 <span className="text-green-400">$100,000 / yr</span>
               </span>
               <span className="text-xs text-muted">
-                {qualified.length} positions · equal weight · update <em>Shares Owned</em> as you buy
+                {qualified.length} screened · {userAdded.length} custom · update <em>Shares Owned</em> as you buy
               </span>
             </div>
+
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-[11px] text-muted uppercase tracking-wide">
@@ -387,70 +424,137 @@ export default function DividendPage() {
                   <th className="px-3 py-3 text-left">Ticker</th>
                   <th className="px-3 py-3 text-left">Company</th>
                   <th className="px-3 py-3 text-right">Yield</th>
+                  <th className="px-3 py-3 text-right">Div / Share</th>
                   <th className="px-3 py-3 text-right">Price</th>
                   <th className="px-3 py-3 text-right">Invest</th>
                   <th className="px-3 py-3 text-right">Shares Goal</th>
                   <th className="px-3 py-3 text-right">Shares Owned</th>
                   <th className="px-3 py-3 text-right text-green-400/70">Target Income / yr</th>
+                  <th className="px-3 py-3 w-8" />
                 </tr>
               </thead>
               <tbody>
-                {plan.rows.map((s, i) => {
-                  const owned      = getOwned(s.symbol)
-                  const sharesGoal = Math.max(0, s.targetShares - owned)
-                  const goalMet    = owned >= s.targetShares
 
-                  return (
-                    <tr key={s.symbol}
-                        className="border-b border-border/40 hover:bg-white/[0.025] transition-colors">
-                      <td className="px-3 py-2.5 text-xs text-muted">{i + 1}</td>
-                      <td className="px-3 py-2.5 mono font-semibold text-accent">{s.symbol}</td>
-                      <td className="px-3 py-2.5 text-xs text-slate-300 max-w-[150px]">
-                        <span className="truncate block">{s.name}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <YieldPill value={s.dividend_yield} />
-                      </td>
-                      <td className="px-3 py-2.5 text-right mono">${s.price.toFixed(2)}</td>
-                      <td className="px-3 py-2.5 text-right mono">{usd(s.targetInvest)}</td>
-
-                      {/* Shares Goal */}
-                      <td className="px-3 py-2.5 text-right mono">
-                        {goalMet
-                          ? <span className="text-green-400 text-xs font-medium">✓ {s.targetShares.toLocaleString()}</span>
-                          : <span>{sharesGoal.toLocaleString()}</span>
-                        }
-                      </td>
-
-                      {/* Shares Owned — editable */}
-                      <td className="px-3 py-2.5 text-right">
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={ownedInputs[s.symbol] ?? ''}
-                          placeholder="0"
-                          onChange={e => handleOwned(s.symbol, e.target.value)}
-                          className="w-20 bg-surface border border-border rounded-md px-2 py-1 text-xs mono text-right focus:outline-none focus:border-accent transition-colors"
-                        />
-                      </td>
-
-                      {/* Target income */}
-                      <td className="px-3 py-2.5 text-right mono text-green-400/60">
-                        {usd(s.targetIncome)}
+                {/* ── User-added tickers ──────────────────────── */}
+                {userAdded.length > 0 && (
+                  <>
+                    <tr className="bg-accent/[0.03]">
+                      <td colSpan={11} className="px-3 py-1.5 text-[10px] text-accent/70 uppercase tracking-widest font-medium border-b border-accent/10">
+                        Custom Tickers
                       </td>
                     </tr>
-                  )
-                })}
+                    {userAdded
+                      .sort((a, b) => b.dividend_yield - a.dividend_yield)
+                      .map((s, i) => {
+                        const owned = getOwned(s.symbol)
+                        const projIncome = owned * s.annual_dividend
+                        return (
+                          <tr key={s.symbol}
+                            className="border-b border-border/40 hover:bg-white/[0.025] transition-colors bg-accent/[0.02]">
+                            <td className="px-3 py-2.5 text-xs text-muted">{i + 1}</td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="mono font-semibold text-accent">{s.symbol}</span>
+                                <span className="text-[9px] bg-accent/15 text-accent border border-accent/25 rounded px-1 py-0.5 uppercase tracking-wide leading-none">custom</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-xs text-slate-300 max-w-[150px]">
+                              <span className="truncate block">{s.name}</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <YieldPill value={s.dividend_yield} />
+                            </td>
+                            <td className="px-3 py-2.5 text-right mono text-slate-300">${(s.annual_dividend ?? 0).toFixed(2)}</td>
+                            <td className="px-3 py-2.5 text-right mono">${(s.price ?? 0).toFixed(2)}</td>
+                            <td className="px-3 py-2.5 text-right mono text-muted">—</td>
+                            <td className="px-3 py-2.5 text-right mono text-muted">—</td>
+                            <td className="px-3 py-2.5 text-right">
+                              <input
+                                type="number" min="0" step="1"
+                                value={ownedInputs[s.symbol] ?? ''}
+                                placeholder="0"
+                                onChange={e => handleOwned(s.symbol, e.target.value)}
+                                className="w-20 bg-surface border border-border rounded-md px-2 py-1 text-xs mono text-right focus:outline-none focus:border-accent transition-colors"
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 text-right mono text-green-400/60">
+                              {owned > 0 ? usd(projIncome) : '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              <button
+                                onClick={() => handleRemoveTicker(s.symbol)}
+                                title={`Remove ${s.symbol}`}
+                                className="p-1 text-muted hover:text-red-400 transition-colors rounded"
+                              >
+                                <X size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </>
+                )}
+
+                {/* ── Screened plan rows ──────────────────────── */}
+                {qualified.length > 0 && (
+                  <>
+                    {userAdded.length > 0 && (
+                      <tr className="bg-white/[0.01]">
+                        <td colSpan={11} className="px-3 py-1.5 text-[10px] text-muted uppercase tracking-widest font-medium border-b border-border/30">
+                          Screened Portfolio — Top {qualified.length} by Yield ≥ 5%
+                        </td>
+                      </tr>
+                    )}
+                    {plan.rows.map((s, i) => {
+                      const owned      = getOwned(s.symbol)
+                      const sharesGoal = Math.max(0, s.targetShares - owned)
+                      const goalMet    = owned >= s.targetShares
+                      return (
+                        <tr key={s.symbol}
+                          className="border-b border-border/40 hover:bg-white/[0.025] transition-colors">
+                          <td className="px-3 py-2.5 text-xs text-muted">{i + 1}</td>
+                          <td className="px-3 py-2.5 mono font-semibold text-accent">{s.symbol}</td>
+                          <td className="px-3 py-2.5 text-xs text-slate-300 max-w-[150px]">
+                            <span className="truncate block">{s.name}</span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            <YieldPill value={s.dividend_yield} />
+                          </td>
+                          <td className="px-3 py-2.5 text-right mono text-slate-300">${(s.annual_dividend ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-right mono">${(s.price ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-right mono">{usd(s.targetInvest)}</td>
+                          <td className="px-3 py-2.5 text-right mono">
+                            {goalMet
+                              ? <span className="text-green-400 text-xs font-medium">✓ {s.targetShares.toLocaleString()}</span>
+                              : <span>{sharesGoal.toLocaleString()}</span>
+                            }
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            <input
+                              type="number" min="0" step="1"
+                              value={ownedInputs[s.symbol] ?? ''}
+                              placeholder="0"
+                              onChange={e => handleOwned(s.symbol, e.target.value)}
+                              className="w-20 bg-surface border border-border rounded-md px-2 py-1 text-xs mono text-right focus:outline-none focus:border-accent transition-colors"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 text-right mono text-green-400/60">
+                            {usd(s.targetIncome)}
+                          </td>
+                          <td className="px-3 py-2.5" />
+                        </tr>
+                      )
+                    })}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
 
           <p className="text-xs text-muted">
-            {qualified.length} stocks/ETFs with yield ≥ 5% shown (screened {data?.count ?? '…'} total).
-            Equal-weight allocation. Shares Goal = target shares remaining after what you already own.
-            Projected income updates live as you enter shares. Saves automatically.
-            Data via Yahoo Finance · not financial advice.
+            {qualified.length} screened stocks/ETFs with yield ≥ 5% · {userAdded.length} custom tickers.
+            Equal-weight allocation across screened portfolio. Custom tickers are always tracked regardless of yield.
+            Projected income updates live as you enter shares. Data via Yahoo Finance · not financial advice.
           </p>
         </>
       )}

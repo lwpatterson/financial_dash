@@ -1,5 +1,6 @@
 import os
 from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy import text
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////workspace/backend/data/stocks.db")
 
@@ -12,6 +13,17 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 def init_db():
     SQLModel.metadata.create_all(engine)
+    # Column migrations — safe to run on every startup; each is a no-op if already present
+    _migrations = [
+        "ALTER TABLE dividendholding ADD COLUMN user_added INTEGER NOT NULL DEFAULT 0",
+    ]
+    with engine.connect() as conn:
+        for stmt in _migrations:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
 
 
 def get_session():

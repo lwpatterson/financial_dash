@@ -78,6 +78,7 @@ class DividendHolding(SQLModel, table=True):
     """Tracks how many shares of each dividend stock the user actually owns."""
     symbol:       str      = Field(primary_key=True)
     shares_owned: float    = Field(default=0.0)
+    user_added:   bool     = Field(default=False)   # True = manually added by user
     updated_at:   datetime = Field(default_factory=datetime.utcnow)
 
 

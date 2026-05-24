@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
-import { BarChart2, Bell, Activity, Landmark, Home, Stethoscope, PiggyBank, Briefcase, Layers } from 'lucide-react'
+import { BarChart2, Bell, Landmark, Home, Stethoscope, PiggyBank, Briefcase, Layers, LayoutDashboard, Scale } from 'lucide-react'
 import { useAlertNotifications } from '../hooks/useAlertNotifications'
 import ToastContainer from './ToastContainer'
 
@@ -18,34 +18,53 @@ export default function Layout() {
         }`
       }
     >
-      <Icon size={16} />
-      {label}
+      <Icon size={16} className="shrink-0" />
+      <span>{label}</span>
     </NavLink>
   )
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Stethoscope size={20} className="text-accent" />
+    <div className="flex h-screen overflow-hidden">
+
+      {/* ── Sidebar ─────────────────────────────────────────────── */}
+      <aside className="w-56 shrink-0 flex flex-col border-r border-border bg-panel overflow-y-auto">
+
+        {/* Logo / brand */}
+        <div className="px-4 py-4 border-b border-border flex items-center gap-2.5 shrink-0">
+          <div className="relative shrink-0">
+            <Stethoscope size={18} className="text-accent" />
             <span className="absolute -bottom-0.5 -right-1.5 text-[9px] font-black text-green-400 leading-none">$</span>
           </div>
-          <span className="font-semibold tracking-tight">Financial Wellness</span>
+          <span className="font-semibold tracking-tight text-sm leading-tight">Financial Wellness</span>
         </div>
-        <nav className="flex items-center gap-1">
-          {nav('/',          BarChart2, 'Stock Watchlist')}
-          {nav('/alerts',    Bell,      'Stock Alerts')}
-          {nav('/dividends', Landmark,  'Dividends')}
-          {nav('/mortgage',   Home,      'Mortgage')}
-          {nav('/retirement', PiggyBank,  'Retirement')}
+
+        {/* Nav links */}
+        <nav className="flex-1 p-2 space-y-0.5">
+          <p className="text-[10px] text-muted uppercase tracking-widest px-3 pt-2 pb-1">Overview</p>
+          {nav('/',          LayoutDashboard, 'Dashboard')}
+
+          <p className="text-[10px] text-muted uppercase tracking-widest px-3 pt-3 pb-1">Stocks</p>
+          {nav('/watchlist', BarChart2,       'Watchlist')}
+          {nav('/alerts',    Bell,            'Alerts')}
+          {nav('/dividends', Landmark,        'Dividends')}
+
+          <p className="text-[10px] text-muted uppercase tracking-widest px-3 pt-3 pb-1">Net Worth</p>
+          {nav('/retirement', PiggyBank, 'Retirement')}
           {nav('/workstock',  Briefcase, 'Work Stock')}
           {nav('/assets',     Layers,    'Assets')}
-        </nav>
-      </header>
 
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
-        <Outlet />
+          <p className="text-[10px] text-muted uppercase tracking-widest px-3 pt-3 pb-1">Planning</p>
+          {nav('/mortgage',  Home,  'Mortgage')}
+          {nav('/strategy',  Scale, 'Payoff vs. Invest')}
+        </nav>
+
+      </aside>
+
+      {/* ── Main content ────────────────────────────────────────── */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-6 max-w-6xl mx-auto">
+          <Outlet />
+        </div>
       </main>
 
       <ToastContainer toasts={toasts} dismiss={dismiss} />

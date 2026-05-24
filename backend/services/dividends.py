@@ -81,7 +81,7 @@ DIVIDEND_UNIVERSE = [
 ]
 
 
-def _fetch_one(symbol: str) -> Optional[dict]:
+def fetch_one(symbol: str) -> Optional[dict]:
     """
     Fetch dividend info for one ticker via yfinance.
     Returns None if the ticker pays no dividend or if the fetch fails.
@@ -153,7 +153,7 @@ def fetch_all_dividends(max_workers: int = 8) -> list[dict]:
     """
     results: list[dict] = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_fetch_one, sym): sym for sym in DIVIDEND_UNIVERSE}
+        futures = {executor.submit(fetch_one, sym): sym for sym in DIVIDEND_UNIVERSE}
         for future in as_completed(futures):
             data = future.result()
             if data:

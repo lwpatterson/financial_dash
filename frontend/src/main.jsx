@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import Layout from './components/Layout'
+import DashboardPage from './pages/DashboardPage'
 import Dashboard from './pages/Dashboard'
+import PayoffVsInvestPage from './pages/PayoffVsInvestPage'
 import AlertsPage from './pages/AlertsPage'
 import DividendPage from './pages/DividendPage'
 import MortgagePage from './pages/MortgagePage'
@@ -16,10 +18,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
+          <Route index element={<DashboardPage />} />
+          <Route path="watchlist" element={<Dashboard />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="dividends" element={<DividendPage />} />
           <Route path="mortgage" element={<MortgagePage />} />
+          <Route path="strategy" element={<PayoffVsInvestPage />} />
           <Route path="retirement" element={<RetirementPage />} />
           <Route path="workstock" element={<WorkStockPage />} />
           <Route path="assets" element={<AssetsPage />} />

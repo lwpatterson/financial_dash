@@ -273,7 +273,7 @@ export default function AlertsPage() {
 
       {tickers.length === 0 && (
         <div className="card badge-muted text-sm">
-          Add tickers on the Stock Watchlist before creating alert rules.
+          Add tickers on the <a href="/watchlist" className="underline hover:text-slate-200 transition-colors">Stock Watchlist</a> before creating alert rules.
         </div>
       )}
 
