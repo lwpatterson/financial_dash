@@ -67,8 +67,8 @@ function progressColor(pct) {
   return '#22c55e'
 }
 
-// Tick values every $10K; labels at milestones only
-const TICKS = Array.from({ length: 11 }, (_, i) => i * 10_000)
+// Minor ticks every $10K + the $25K and $75K milestone ticks; labels at all 5 milestones
+const TICKS = [0, 10_000, 20_000, 25_000, 30_000, 40_000, 50_000, 60_000, 70_000, 75_000, 80_000, 90_000, 100_000]
 const TICK_LABELS = { 0: '$0', 25_000: '$25K', 50_000: '$50K', 75_000: '$75K', 100_000: '$100K' }
 
 function IncomeProgressBar({ current, target }) {
